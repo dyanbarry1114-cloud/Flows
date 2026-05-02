@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACCT 405 — Interactive Cash Flow Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4ff; color: #2d3561; font-size: 13px; }
+
+/* ── NAV ── */
+.topnav { background: linear-gradient(135deg, #263238, #37474F); padding: 0; display: flex; align-items: stretch; flex-wrap: wrap; position: sticky; top: 0; z-index: 300; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+.nav-brand { color: white; font-weight: 900; font-size: 1em; padding: 14px 20px; background: rgba(255,255,255,0.1); white-space: nowrap; }
+.nav-btn { color: rgba(255,255,255,0.85); border: none; background: transparent; padding: 14px 16px; cursor: pointer; font-size: 12px; font-weight: bold; transition: all 0.2s; white-space: nowrap; }
+.nav-btn:hover, .nav-btn.active { background: rgba(255,255,255,0.2); color: white; }
+.nav-btn.active { border-bottom: 3px solid #68d391; }
+
+.panel { display: none; padding: 20px; max-width: 1060px; margin: 0 auto; }
+.panel.active { display: block; }
+
+/* ── HERO ── */
+.hero { background: linear-gradient(135deg, #263238 0%, #37474F 50%, #455A64 100%); border-radius: 14px; padding: 18px 24px; margin-bottom: 18px; }
+.hero h1 { color: white; font-size: 1.3em; margin-bottom: 6px; }
+.hero p { color: rgba(255,255,255,0.8); font-size: 12px; }
+
+/* ── LABOR DAY MINI ── */
+.ld-mini { display: flex; border-radius: 12px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
+.ld-l { flex:1; background: linear-gradient(135deg,#0D47A1,#1565C0); padding: 14px 16px; text-align: center; }
+.ld-r { flex:1; background: linear-gradient(135deg,#1B5E20,#2E7D32); padding: 14px 16px; text-align: center; }
+.ld-div { width: 3px; background: white; }
+.ld-letter { font-size: 2em; font-weight: 900; color: white; line-height: 1; }
+.ld-title { font-size: 0.78em; font-weight: bold; color: white; margin: 3px 0; }
+.ld-rule { font-size: 11px; color: rgba(255,255,255,0.9); line-height: 1.8; }
+.ld-pill { display: inline-block; background: rgba(255,255,255,0.2); border-radius: 10px; padding: 1px 8px; font-size: 10px; color: white; margin: 1px; }
+
+/* ── SECTION HEADERS ── */
+.sec-hdr { border-radius: 10px; padding: 11px 16px; margin-bottom: 12px; color: white; font-weight: bold; font-size: 0.9em; }
+.sh-op { background: linear-gradient(135deg, #1B5E20, #2E7D32); }
+.sh-inv { background: linear-gradient(135deg, #0D47A1, #1565C0); }
+.sh-fin { background: linear-gradient(135deg, #4A148C, #6A1B9A); }
+.sh-nc { background: linear-gradient(135deg, #BF360C, #E65100); }
+.sh-cf { background: linear-gradient(135deg, #263238, #37474F); }
+.sh-ref { background: linear-gradient(135deg, #004D40, #00695C); }
+
+/* ── TRANSACTION ITEMS ── */
+.txn-pool { background: white; border-radius: 12px; padding: 16px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+.txn-pool h3 { font-size: 0.88em; font-weight: bold; color: #37474F; margin-bottom: 12px; }
+.txn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.txn-item { border-radius: 8px; padding: 10px 12px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; font-size: 12px; line-height: 1.4; }
+.txn-item:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+.txn-item.selected { border-color: #37474F; opacity: 0.5; }
+.txn-item .txn-amt { font-weight: bold; font-size: 13px; margin-top: 4px; }
+.txn-item .txn-hint { font-size: 10px; opacity: 0.75; margin-top: 3px; font-style: italic; }
+
+/* Transaction colors by type */
+.t-ni { background: #E8F5E9; border-left: 4px solid #2E7D32; }
+.t-depr { background: #E3F2FD; border-left: 4px solid #1565C0; }
+.t-gain { background: #FFEBEE; border-left: 4px solid #C62828; }
+.t-loss { background: #FBE9E7; border-left: 4px solid #E65100; }
+.t-ar { background: #F3E5F5; border-left: 4px solid #6A1B9A; }
+.t-ap { background: #E0F2F1; border-left: 4px solid #00695C; }
+.t-inv { background: #FFF8E1; border-left: 4px solid #F57F17; }
+.t-bond { background: #E8EAF6; border-left: 4px solid #283593; }
+.t-dtl { background: #FCE4EC; border-left: 4px solid #880E4F; }
+.t-dta { background: #E8F5E9; border-left: 4px solid #1B5E20; }
+.t-fvtni { background: #E3F2FD; border-left: 4px solid #0D47A1; }
+.t-equity { background: #F3E5F5; border-left: 4px solid #4A148C; }
+.t-sbc { background: #FBE9E7; border-left: 4px solid #BF360C; }
+.t-ppe { background: #ECEFF1; border-left: 4px solid #37474F; }
+.t-lease { background: #E8EAF6; border-left: 4px solid #1A237E; }
+.t-stock { background: #FCE4EC; border-left: 4px solid #C62828; }
+.t-debt { background: #E0F2F1; border-left: 4px solid #004D40; }
+.t-noncash { background: #FFF3E0; border-left: 4px solid #E65100; }
+
+/* ── STATEMENT BUILDER ── */
+.stmt-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.stmt-section { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+.stmt-hdr { padding: 12px 16px; color: white; font-weight: bold; font-size: 0.88em; }
+.stmt-hdr-op { background: linear-gradient(135deg, #1B5E20, #2E7D32); }
+.stmt-hdr-inv { background: linear-gradient(135deg, #0D47A1, #1565C0); }
+.stmt-hdr-fin { background: linear-gradient(135deg, #4A148C, #6A1B9A); }
+.stmt-hdr-nc { background: linear-gradient(135deg, #BF360C, #E65100); }
+.stmt-body { padding: 12px 14px; min-height: 120px; }
+.stmt-line { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-radius: 6px; margin-bottom: 4px; font-size: 12px; }
+.stmt-line:hover { background: #f5f5f5; }
+.stmt-line .sl-label { flex: 1; color: #2d3561; }
+.stmt-line .sl-amt { font-weight: bold; font-family: 'Courier New', monospace; min-width: 80px; text-align: right; }
+.sl-pos { color: #1B5E20; }
+.sl-neg { color: #C62828; }
+.stmt-line .sl-remove { background: none; border: none; color: #ccc; cursor: pointer; font-size: 14px; padding: 0 4px; margin-left: 6px; }
+.stmt-line .sl-remove:hover { color: #C62828; }
+.stmt-total { display: flex; justify-content: space-between; padding: 8px 8px; border-top: 2px solid; margin-top: 6px; font-weight: bold; font-size: 13px; }
+.total-op { border-color: #2E7D32; color: #1B5E20; }
+.total-inv { border-color: #1565C0; color: #0D47A1; }
+.total-fin { border-color: #6A1B9A; color: #4A148C; }
+.total-nc { border-color: #E65100; color: #BF360C; }
+.stmt-empty { color: #bbb; font-size: 11px; font-style: italic; text-align: center; padding: 16px; }
+
+/* ── ANSWER BUTTONS ── */
+.answer-zone { background: white; border-radius: 12px; padding: 16px; margin-bottom: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+.answer-zone h3 { font-size: 0.88em; font-weight: bold; color: #37474F; margin-bottom: 12px; }
+.section-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.sec-btn { border: 2px solid; border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: bold; cursor: pointer; background: white; transition: all 0.2s; }
+.sec-btn-op { border-color: #2E7D32; color: #2E7D32; }
+.sec-btn-op:hover, .sec-btn-op.active { background: #2E7D32; color: white; }
+.sec-btn-inv { border-color: #1565C0; color: #1565C0; }
+.sec-btn-inv:hover, .sec-btn-inv.active { background: #1565C0; color: white; }
+.sec-btn-fin { border-color: #6A1B9A; color: #6A1B9A; }
+.sec-btn-fin:hover, .sec-btn-fin.active { background: #6A1B9A; color: white; }
+.sec-btn-nc { border-color: #E65100; color: #E65100; }
+.sec-btn-nc:hover, .sec-btn-nc.active { background: #E65100; color: white; }
+
+/* ── GRAND TOTAL ── */
+.grand-total { background: linear-gradient(135deg, #263238, #37474F); border-radius: 12px; padding: 16px 20px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center; }
+.grand-total h3 { color: white; font-size: 0.95em; }
+.grand-total .gt-amt { color: #68d391; font-size: 1.4em; font-weight: 900; font-family: 'Courier New', monospace; }
+.grand-total .gt-check { font-size: 11px; color: rgba(255,255,255,0.7); margin-top: 4px; }
+
+/* ── QUIZ MODE ── */
+.quiz-item { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.quiz-item.correct { border-left: 5px solid #2E7D32; background: #F1F8E9; }
+.quiz-item.wrong { border-left: 5px solid #C62828; background: #FFEBEE; }
+.quiz-q { font-size: 13px; font-weight: bold; color: #2d3561; margin-bottom: 10px; line-height: 1.5; }
+.quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.quiz-opt { border: 2px solid #e0e0e0; border-radius: 8px; padding: 9px 12px; cursor: pointer; font-size: 12px; color: #2d3561; background: white; text-align: left; transition: all 0.2s; line-height: 1.4; }
+.quiz-opt:hover { border-color: #37474F; background: #ECEFF1; }
+.quiz-opt.sel-correct { border-color: #2E7D32; background: #E8F5E9; color: #1B5E20; font-weight: bold; pointer-events: none; }
+.quiz-opt.sel-wrong { border-color: #C62828; background: #FFEBEE; color: #B71C1C; font-weight: bold; pointer-events: none; }
+.quiz-opt.reveal { border-color: #2E7D32; background: #E8F5E9; color: #1B5E20; pointer-events: none; }
+.quiz-opt.disabled { pointer-events: none; opacity: 0.6; }
+.quiz-exp { margin-top: 10px; padding: 9px 12px; border-radius: 6px; font-size: 12px; line-height: 1.6; display: none; }
+.quiz-exp.show { display: block; }
+.exp-ok { background: #E8F5E9; color: #1B5E20; border-left: 3px solid #2E7D32; }
+.exp-no { background: #FFEBEE; color: #B71C1C; border-left: 3px solid #C62828; }
+.quiz-score-bar { background: linear-gradient(135deg, #263238, #37474F); border-radius: 10px; padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.quiz-score-bar span { color: white; font-weight: bold; font-size: 13px; }
+.quiz-actions { display: flex; gap: 10px; margin-top: 16px; }
+.qa-btn { border: none; border-radius: 10px; padding: 10px 22px; font-size: 13px; font-weight: bold; cursor: pointer; color: white; }
+.qa-submit { background: linear-gradient(135deg, #263238, #37474F); }
+.qa-reset { background: #78909C; }
+
+/* ── REFERENCE ── */
+.ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.ref-card { border-radius: 10px; padding: 14px; }
+.rc-op { background: #E8F5E9; border-top: 4px solid #2E7D32; }
+.rc-inv { background: #E3F2FD; border-top: 4px solid #1565C0; }
+.rc-fin { background: #F3E5F5; border-top: 4px solid #6A1B9A; }
+.rc-nc { background: #FBE9E7; border-top: 4px solid #E65100; }
+.ref-card h3 { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.rc-op h3{color:#1B5E20;} .rc-inv h3{color:#0D47A1;} .rc-fin h3{color:#4A148C;} .rc-nc h3{color:#BF360C;}
+.ref-card li { font-size: 11px; color: #2d3561; padding: 3px 0; border-bottom: 1px solid rgba(0,0,0,0.07); list-style: none; line-height: 1.5; }
+.ref-card li:last-child { border-bottom: none; }
+
+/* ── CALLOUTS ── */
+.tip{background:#E8F5E9;border-left:4px solid #2E7D32;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;color:#1B5E20;line-height:1.6;}
+.warn{background:#FFEBEE;border-left:4px solid #C62828;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;color:#B71C1C;line-height:1.6;}
+.info{background:#E3F2FD;border-left:4px solid #1565C0;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;color:#0D47A1;line-height:1.6;}
+.prof{background:#FFF8E1;border-left:4px solid #F57F17;border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:12px;color:#E65100;line-height:1.6;}
+
+/* ── RESULT BOX ── */
+.result-box { background: linear-gradient(135deg, #263238, #37474F); border-radius: 14px; padding: 20px; text-align: center; color: white; margin-top: 16px; display: none; }
+.result-box.show { display: block; }
+.result-score { font-size: 2.5em; font-weight: 900; }
+.result-msg { font-size: 1em; margin-top: 6px; opacity: 0.9; }
+
+/* ── PROBLEM STATEMENT ── */
+.prob-card { background: white; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 4px solid #37474F; }
+.prob-card h3 { color: #37474F; font-size: 0.95em; margin-bottom: 12px; }
+.prob-data { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.prob-item { background: #ECEFF1; border-radius: 8px; padding: 8px 12px; font-size: 12px; display: flex; justify-content: space-between; }
+.prob-item .pi-label { color: #37474F; }
+.prob-item .pi-amt { font-weight: bold; color: #263238; font-family: 'Courier New', monospace; }
+
+/* ── INDIRECT TEMPLATE ── */
+.indirect-template { background: white; border-radius: 12px; padding: 18px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+.it-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid rgba(0,0,0,0.06); font-size: 12px; }
+.it-row:last-child { border-bottom: none; }
+.it-row.it-total { border-top: 2px solid #37474F; border-bottom: none; font-weight: bold; font-size: 13px; margin-top: 4px; padding-top: 8px; }
+.it-row.it-header { background: #ECEFF1; border-radius: 6px; font-weight: bold; color: #37474F; margin-bottom: 4px; }
+.it-label { flex: 1; color: #2d3561; }
+.it-input { width: 100px; border: 2px solid #e0e0e0; border-radius: 6px; padding: 4px 8px; font-size: 12px; text-align: right; font-family: 'Courier New', monospace; color: #2d3561; }
+.it-input:focus { outline: none; border-color: #37474F; }
+.it-input.correct { border-color: #2E7D32; background: #E8F5E9; color: #1B5E20; }
+.it-input.wrong { border-color: #C62828; background: #FFEBEE; color: #B71C1C; }
+.it-answer { font-family: 'Courier New', monospace; font-weight: bold; min-width: 100px; text-align: right; }
+.it-pos { color: #1B5E20; }
+.it-neg { color: #C62828; }
+.check-btn { background: linear-gradient(135deg, #263238, #37474F); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 12px; }
+.show-btn { background: #78909C; color: white; border: none; border-radius: 8px; padding: 8px 20px; font-size: 12px; font-weight: bold; cursor: pointer; margin-top: 12px; margin-left: 8px; }
+
+@media (max-width: 700px) {
+  .txn-grid, .stmt-wrap, .ref-grid, .prob-data, .quiz-opts { grid-template-columns: 1fr; }
+  .ld-mini { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<div class="topnav">
+  <div class="nav-brand">📃 ACCT 405 — Cash Flow Builder</div>
+  <button class="nav-btn active" onclick="showPanel('builder')">🏗️ Statement Builder</button>
+  <button class="nav-btn" onclick="showPanel('workout')">✏️ Work-Out Problem</button>
+  <button class="nav-btn" onclick="showPanel('quiz')">📝 Classification Quiz</button>
+  <button class="nav-btn" onclick="showPanel('reference')">📋 Reference Guide</button>
+</div>
+
+<!-- ═══════════ BUILDER ═══════════ -->
+<div id="panel-builder" class="panel active">
+  <div class="hero">
+    <h1>📃 Interactive Cash Flow Statement Builder</h1>
+    <p>Click any transaction below to add it to the correct section. Build your statement using the indirect method — just like your professor taught!</p>
+  </div>
+
+  <div class="ld-mini">
+    <div class="ld-l">
+      <div class="ld-letter">L</div>
+      <div class="ld-title">LIABILITIES — DUPLICATE</div>
+      <div class="ld-rule">↑ Increase → <strong>ADD ➕</strong> &nbsp;|&nbsp; ↓ Decrease → <strong>SUBTRACT ➖</strong></div>
+      <div style="margin-top:6px;">
+        <span class="ld-pill">AP ↑ → Add</span><span class="ld-pill">DTL ↑ → Add</span><span class="ld-pill">ITP ↑ → Add</span>
+      </div>
+    </div>
+    <div class="ld-div"></div>
+    <div class="ld-r">
+      <div class="ld-letter">A</div>
+      <div class="ld-title">ASSETS — REVERSE</div>
+      <div class="ld-rule">↑ Increase → <strong>SUBTRACT ➖</strong> &nbsp;|&nbsp; ↓ Decrease → <strong>ADD ➕</strong></div>
+      <div style="margin-top:6px;">
+        <span class="ld-pill">AR ↑ → Sub</span><span class="ld-pill">Inventory ↑ → Sub</span><span class="ld-pill">DTA ↑ → Sub</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSACTION POOL -->
+  <div class="txn-pool">
+    <h3>📦 Transaction Pool — Click a transaction, then click which section it belongs to!</h3>
+    <div class="txn-grid" id="txn-pool-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- SELECTED TRANSACTION -->
+  <div id="selected-banner" style="display:none; background:linear-gradient(135deg,#263238,#37474F); border-radius:10px; padding:12px 16px; margin-bottom:14px; color:white;">
+    <div style="font-size:11px; opacity:0.8; margin-bottom:4px;">SELECTED TRANSACTION:</div>
+    <div id="selected-name" style="font-weight:bold; font-size:13px;"></div>
+    <div style="margin-top:8px; font-size:12px; opacity:0.85;">Where does this go? →</div>
+    <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
+      <button class="sec-btn sec-btn-op" onclick="addToSection('operating')">🟢 Operating</button>
+      <button class="sec-btn sec-btn-inv" onclick="addToSection('investing')">🔵 Investing</button>
+      <button class="sec-btn sec-btn-fin" onclick="addToSection('financing')">🟣 Financing</button>
+      <button class="sec-btn sec-btn-nc" onclick="addToSection('noncash')">🟠 Non-Cash Disclosure</button>
+    </div>
+  </div>
+
+  <!-- STATEMENT SECTIONS -->
+  <div class="stmt-wrap">
+    <!-- OPERATING -->
+    <div class="stmt-section">
+      <div class="stmt-hdr stmt-hdr-op">🟢 Operating Activities (Indirect Method)</div>
+      <div class="stmt-body" id="op-body">
+        <div class="stmt-empty" id="op-empty">Click transactions above and select "Operating" to add them here</div>
+      </div>
+      <div style="padding:0 14px 12px;">
+        <div class="stmt-total total-op">
+          <span>Net Cash from Operating Activities</span>
+          <span id="op-total">$0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- INVESTING -->
+    <div class="stmt-section">
+      <div class="stmt-hdr stmt-hdr-inv">🔵 Investing Activities</div>
+      <div class="stmt-body" id="inv-body">
+        <div class="stmt-empty" id="inv-empty">Click transactions above and select "Investing" to add them here</div>
+      </div>
+      <div style="padding:0 14px 12px;">
+        <div class="stmt-total total-inv">
+          <span>Net Cash from Investing Activities</span>
+          <span id="inv-total">$0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FINANCING -->
+    <div class="stmt-section">
+      <div class="stmt-hdr stmt-hdr-fin">🟣 Financing Activities</div>
+      <div class="stmt-body" id="fin-body">
+        <div class="stmt-empty" id="fin-empty">Click transactions above and select "Financing" to add them here</div>
+      </div>
+      <div style="padding:0 14px 12px;">
+        <div class="stmt-total total-fin">
+          <span>Net Cash from Financing Activities</span>
+          <span id="fin-total">$0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NON-CASH -->
+    <div class="stmt-section">
+      <div class="stmt-hdr stmt-hdr-nc">🟠 Non-Cash Investing & Financing Disclosures</div>
+      <div class="stmt-body" id="nc-body">
+        <div class="stmt-empty" id="nc-empty">Click transactions above and select "Non-Cash" to add them here</div>
+      </div>
+      <div style="padding:0 14px 12px;">
+        <div class="stmt-total total-nc">
+          <span>Total Non-Cash Disclosures</span>
+          <span id="nc-total">$0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAND TOTAL -->
+  <div class="grand-total">
+    <div>
+      <h3>💰 Net Increase (Decrease) in Cash</h3>
+      <div class="gt-check" id="gt-check">Add transactions to see the net change in cash</div>
+    </div>
+    <div class="gt-amt" id="grand-total-amt">$0</div>
+  </div>
+
+  <!-- CHECK ANSWERS -->
+  <div style="text-align:center; margin-bottom:18px;">
+    <button onclick="checkAnswers()" style="background:linear-gradient(135deg,#1B5E20,#2E7D32);color:white;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:bold;cursor:pointer;margin-right:10px;">✅ Check My Answers</button>
+    <button onclick="resetBuilder()" style="background:#78909C;color:white;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:bold;cursor:pointer;">🔄 Reset</button>
+    <button onclick="showAnswers()" style="background:linear-gradient(135deg,#BF360C,#E65100);color:white;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:bold;cursor:pointer;margin-left:10px;">👁️ Show Answers</button>
+  </div>
+
+  <div id="feedback-box" style="display:none; background:white; border-radius:12px; padding:16px; margin-bottom:18px; box-shadow:0 2px 10px rgba(0,0,0,0.08);"></div>
+</div>
+
+<!-- ═══════════ WORK-OUT PROBLEM ═══════════ -->
+<div id="panel-workout" class="panel">
+  <div class="hero">
+    <h1>✏️ Work-Out Problem — Semester End Survivors Inc.</h1>
+    <p>Build the complete Statement of Cash Flows using the indirect method. Enter your answers and check them!</p>
+  </div>
+
+  <!-- PROBLEM DATA -->
+  <div class="prob-card">
+    <h3>📊 Semester End Survivors Inc. — Given Information</h3>
+    <div class="prob-data">
+      <div class="prob-item"><span class="pi-label">Net Income</span><span class="pi-amt">$180,000</span></div>
+      <div class="prob-item"><span class="pi-label">Depreciation Expense</span><span class="pi-amt">$45,000</span></div>
+      <div class="prob-item"><span class="pi-label">Accounts Receivable ↑</span><span class="pi-amt">$12,000</span></div>
+      <div class="prob-item"><span class="pi-label">Inventory ↓</span><span class="pi-amt">$8,000</span></div>
+      <div class="prob-item"><span class="pi-label">Accounts Payable ↑</span><span class="pi-amt">$15,000</span></div>
+      <div class="prob-item"><span class="pi-label">Gain on Sale of Equipment</span><span class="pi-amt">$20,000</span></div>
+      <div class="prob-item"><span class="pi-label">Bond Discount Amortization</span><span class="pi-amt">$5,000</span></div>
+      <div class="prob-item"><span class="pi-label">DTL Increase</span><span class="pi-amt">$9,000</span></div>
+      <div class="prob-item"><span class="pi-label">Share-Based Comp Expense</span><span class="pi-amt">$18,000</span></div>
+      <div class="prob-item"><span class="pi-label">FVTNI Unrealized Loss</span><span class="pi-amt">$6,000</span></div>
+      <div class="prob-item"><span class="pi-label">Equity Method Undistributed Earnings</span><span class="pi-amt">$11,000</span></div>
+      <div class="prob-item"><span class="pi-label">Proceeds from Sale of Equipment</span><span class="pi-amt">$55,000</span></div>
+      <div class="prob-item"><span class="pi-label">Purchase of New Equipment</span><span class="pi-amt">$120,000</span></div>
+      <div class="prob-item"><span class="pi-label">Purchase of AFS Investments</span><span class="pi-amt">$40,000</span></div>
+      <div class="prob-item"><span class="pi-label">Proceeds from Bond Issuance</span><span class="pi-amt">$200,000</span></div>
+      <div class="prob-item"><span class="pi-label">Dividends Paid</span><span class="pi-amt">$30,000</span></div>
+      <div class="prob-item"><span class="pi-label">Finance Lease Principal Payment</span><span class="pi-amt">$25,000</span></div>
+      <div class="prob-item"><span class="pi-label">Finance Lease Interest Payment</span><span class="pi-amt">$8,000</span></div>
+      <div class="prob-item"><span class="pi-label">Acquired Equipment via Note Payable</span><span class="pi-amt">$75,000</span></div>
+    </div>
+    <div class="warn" style="margin-top:12px;">⚠️ Remember: Gain on sale → SUBTRACT from NI (full proceeds go to Investing). Finance lease interest → Operating. Finance lease principal → Financing. Non-cash items → Disclosure only!</div>
+  </div>
+
+  <!-- INDIRECT METHOD TEMPLATE -->
+  <div class="sec-hdr sh-op">🟢 Operating Activities — Indirect Method</div>
+  <div class="indirect-template" id="op-template">
+    <div class="it-row it-header"><span class="it-label">Item</span><span style="font-size:11px;color:#37474F;">Your Answer</span><span style="font-size:11px;color:#37474F;min-width:100px;text-align:right;">Correct Answer</span></div>
+    <div class="it-row"><span class="it-label">Net Income</span><input class="it-input" id="ni-input" placeholder="180,000" data-answer="180000"><span class="it-answer" id="ni-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: Depreciation Expense</span><input class="it-input" id="depr-input" placeholder="+" data-answer="45000"><span class="it-answer" id="depr-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Less: Gain on Sale of Equipment</span><input class="it-input" id="gain-input" placeholder="-" data-answer="-20000"><span class="it-answer" id="gain-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: Bond Discount Amortization</span><input class="it-input" id="bond-input" placeholder="+" data-answer="5000"><span class="it-answer" id="bond-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: DTL Increase (LABOR DAY)</span><input class="it-input" id="dtl-input" placeholder="+" data-answer="9000"><span class="it-answer" id="dtl-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: Share-Based Comp Expense</span><input class="it-input" id="sbc-input" placeholder="+" data-answer="18000"><span class="it-answer" id="sbc-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: FVTNI Unrealized Loss</span><input class="it-input" id="fvtni-input" placeholder="+" data-answer="6000"><span class="it-answer" id="fvtni-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Less: Equity Method Undistributed Earnings</span><input class="it-input" id="equity-input" placeholder="-" data-answer="-11000"><span class="it-answer" id="equity-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Less: AR Increase (LABOR DAY)</span><input class="it-input" id="ar-input" placeholder="-" data-answer="-12000"><span class="it-answer" id="ar-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: Inventory Decrease (LABOR DAY)</span><input class="it-input" id="inv-input" placeholder="+" data-answer="8000"><span class="it-answer" id="inv-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: AP Increase (LABOR DAY)</span><input class="it-input" id="ap-input" placeholder="+" data-answer="15000"><span class="it-answer" id="ap-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Add: Finance Lease Interest (Operating)</span><input class="it-input" id="lease-int-input" placeholder="-" data-answer="-8000"><span class="it-answer" id="lease-int-ans" style="display:none;"></span></div>
+    <div class="it-row it-total"><span class="it-label">Net Cash from Operating Activities</span><input class="it-input" id="op-total-input" placeholder="Total" data-answer="235000" style="font-weight:bold;"><span class="it-answer it-pos" id="op-total-ans" style="display:none;"></span></div>
+  </div>
+
+  <div class="sec-hdr sh-inv">🔵 Investing Activities</div>
+  <div class="indirect-template">
+    <div class="it-row it-header"><span class="it-label">Item</span><span style="font-size:11px;color:#37474F;">Your Answer</span><span style="font-size:11px;color:#37474F;min-width:100px;text-align:right;">Correct Answer</span></div>
+    <div class="it-row"><span class="it-label">Proceeds from Sale of Equipment</span><input class="it-input" id="ppe-sale-input" placeholder="+" data-answer="55000"><span class="it-answer" id="ppe-sale-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Purchase of New Equipment</span><input class="it-input" id="ppe-buy-input" placeholder="-" data-answer="-120000"><span class="it-answer" id="ppe-buy-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Purchase of AFS Investments</span><input class="it-input" id="afs-input" placeholder="-" data-answer="-40000"><span class="it-answer" id="afs-ans" style="display:none;"></span></div>
+    <div class="it-row it-total"><span class="it-label">Net Cash from Investing Activities</span><input class="it-input" id="inv-total-input" placeholder="Total" data-answer="-105000" style="font-weight:bold;"><span class="it-answer it-neg" id="inv-total-ans" style="display:none;"></span></div>
+  </div>
+
+  <div class="sec-hdr sh-fin">🟣 Financing Activities</div>
+  <div class="indirect-template">
+    <div class="it-row it-header"><span class="it-label">Item</span><span style="font-size:11px;color:#37474F;">Your Answer</span><span style="font-size:11px;color:#37474F;min-width:100px;text-align:right;">Correct Answer</span></div>
+    <div class="it-row"><span class="it-label">Proceeds from Bond Issuance</span><input class="it-input" id="bond-proc-input" placeholder="+" data-answer="200000"><span class="it-answer" id="bond-proc-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Dividends Paid</span><input class="it-input" id="div-input" placeholder="-" data-answer="-30000"><span class="it-answer" id="div-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Finance Lease Principal Payment</span><input class="it-input" id="lease-prin-input" placeholder="-" data-answer="-25000"><span class="it-answer" id="lease-prin-ans" style="display:none;"></span></div>
+    <div class="it-row it-total"><span class="it-label">Net Cash from Financing Activities</span><input class="it-input" id="fin-total-input" placeholder="Total" data-answer="145000" style="font-weight:bold;"><span class="it-answer it-pos" id="fin-total-ans" style="display:none;"></span></div>
+  </div>
+
+  <div class="sec-hdr sh-nc">🟠 Non-Cash Investing & Financing Disclosures</div>
+  <div class="indirect-template">
+    <div class="it-row it-header"><span class="it-label">Item</span><span style="font-size:11px;color:#37474F;">Your Answer</span><span style="font-size:11px;color:#37474F;min-width:100px;text-align:right;">Correct Answer</span></div>
+    <div class="it-row"><span class="it-label">Equipment Acquired via Note Payable</span><input class="it-input" id="nc-input" placeholder="75,000" data-answer="75000"><span class="it-answer" id="nc-ans" style="display:none;"></span></div>
+  </div>
+
+  <div class="sec-hdr sh-cf">💰 Net Change in Cash</div>
+  <div class="indirect-template">
+    <div class="it-row"><span class="it-label">Net Cash from Operating Activities</span><input class="it-input" id="net-op-input" placeholder="235,000" data-answer="235000"><span class="it-answer" id="net-op-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Net Cash from Investing Activities</span><input class="it-input" id="net-inv-input" placeholder="-105,000" data-answer="-105000"><span class="it-answer" id="net-inv-ans" style="display:none;"></span></div>
+    <div class="it-row"><span class="it-label">Net Cash from Financing Activities</span><input class="it-input" id="net-fin-input" placeholder="145,000" data-answer="145000"><span class="it-answer" id="net-fin-ans" style="display:none;"></span></div>
+    <div class="it-row it-total"><span class="it-label">Net Increase in Cash</span><input class="it-input" id="net-total-input" placeholder="Total" data-answer="275000" style="font-weight:bold;"><span class="it-answer it-pos" id="net-total-ans" style="display:none;"></span></div>
+  </div>
+
+  <div style="margin-bottom:18px;">
+    <button class="check-btn" onclick="checkWorkout()">✅ Check All Answers</button>
+    <button class="show-btn" onclick="showWorkout()">👁️ Show All Answers</button>
+    <button class="show-btn" onclick="resetWorkout()">🔄 Reset</button>
+  </div>
+  <div id="workout-feedback" style="display:none;" class="tip"></div>
+</div>
+
+<!-- ═══════════ QUIZ ═══════════ -->
+<div id="panel-quiz" class="panel">
+  <div class="hero">
+    <h1>📝 Cash Flow Classification Quiz</h1>
+    <p>Test your knowledge of operating, investing, financing, and non-cash classifications — using your professor's exact examples!</p>
+  </div>
+
+  <div class="quiz-score-bar">
+    <span>📊 Score: <span id="quiz-score">0 / 0</span></span>
+    <span id="quiz-progress">Answer questions to track your score</span>
+  </div>
+
+  <div id="quiz-container"></div>
+
+  <div class="result-box" id="result-box">
+    <div class="result-score" id="result-score"></div>
+    <div class="result-msg" id="result-msg"></div>
+  </div>
+
+  <div class="quiz-actions">
+    <button class="qa-btn qa-submit" onclick="submitQuiz()">✅ Submit & Grade</button>
+    <button class="qa-btn qa-reset" onclick="resetQuiz()">🔄 Reset</button>
+  </div>
+</div>
+
+<!-- ═══════════ REFERENCE ═══════════ -->
+<div id="panel-reference" class="panel">
+  <div class="hero">
+    <h1>📋 Cash Flow Reference Guide</h1>
+    <p>Your professor's complete classification rules — indirect method, LABOR DAY, and all complex transactions</p>
+  </div>
+
+  <div class="ld-mini">
+    <div class="ld-l">
+      <div class="ld-letter">L</div>
+      <div class="ld-title">LIABILITIES — DUPLICATE</div>
+      <div class="ld-rule">Same direction as balance change<br>↑ Increase → <strong>ADD ➕</strong> to Net Income<br>↓ Decrease → <strong>SUBTRACT ➖</strong> from Net Income</div>
+      <div style="margin-top:8px;">
+        <span class="ld-pill">AP ↑ → Add</span><span class="ld-pill">AP ↓ → Sub</span>
+        <span class="ld-pill">DTL ↑ → Add</span><span class="ld-pill">ITP ↑ → Add</span>
+        <span class="ld-pill">Wages Pay ↑ → Add</span>
+      </div>
+    </div>
+    <div class="ld-div"></div>
+    <div class="ld-r">
+      <div class="ld-letter">A</div>
+      <div class="ld-title">ASSETS — REVERSE</div>
+      <div class="ld-rule">Opposite direction as balance change<br>↑ Increase → <strong>SUBTRACT ➖</strong> from Net Income<br>↓ Decrease → <strong>ADD ➕</strong> to Net Income</div>
+      <div style="margin-top:8px;">
+        <span class="ld-pill">AR ↑ → Sub</span><span class="ld-pill">AR ↓ → Add</span>
+        <span class="ld-pill">Inventory ↑ → Sub</span><span class="ld-pill">DTA ↑ → Sub</span>
+        <span class="ld-pill">Prepaid ↓ → Add</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="ref-grid">
+    <div class="ref-card rc-op">
+      <h3>🟢 Operating Activities</h3>
+      <ul>
+        <li>✅ Net Income (starting point)</li>
+        <li>➕ Depreciation / Amortization / ROU Amortization</li>
+        <li>➕ Loss on sale of assets</li>
+        <li>➖ Gain on sale of assets</li>
+        <li>➕ Bond Discount Amortization</li>
+        <li>➖ Bond Premium Amortization</li>
+        <li>➕ Share-Based Compensation Expense</li>
+        <li>➕ FVTNI Unrealized Loss</li>
+        <li>➖ FVTNI Unrealized Gain</li>
+        <li>❌ AFS Unrealized G/L — NO adjustment (in OCI)</li>
+        <li>➖ Equity Method Undistributed Earnings</li>
+        <li>➕ DTL Increase | ➖ DTL Decrease</li>
+        <li>➖ DTA Increase | ➕ DTA Decrease</li>
+        <li>➕ Finance Lease Interest Payment</li>
+        <li>Working capital changes → LABOR DAY</li>
+        <li>✅ Interest PAID = Operating</li>
+        <li>✅ Dividends RECEIVED = Operating</li>
+        <li>✅ Trading securities = Operating</li>
+      </ul>
+    </div>
+    <div class="ref-card rc-inv">
+      <h3>🔵 Investing Activities</h3>
+      <ul>
+        <li>✅ Purchase of PP&E (outflow)</li>
+        <li>✅ Proceeds from sale of PP&E (inflow)</li>
+        <li>✅ Purchase of AFS investments (outflow)</li>
+        <li>✅ Proceeds from sale of AFS investments (inflow)</li>
+        <li>✅ Purchase of HTM investments (outflow)</li>
+        <li>✅ Loans made to others (outflow)</li>
+        <li>✅ Collections on loans (inflow)</li>
+        <li>✅ Purchase of equity method investments (outflow)</li>
+        <li>❌ Trading securities → NOT here (Operating!)</li>
+        <li>❌ Interest received → NOT here (Operating!)</li>
+        <li>❌ Dividends received → NOT here (Operating!)</li>
+        <li>⚠️ Full proceeds from asset sale go here</li>
+        <li>⚠️ Gain/loss stays in Operating as adjustment</li>
+      </ul>
+    </div>
+    <div class="ref-card rc-fin">
+      <h3>🟣 Financing Activities</h3>
+      <ul>
+        <li>✅ Proceeds from bond issuance (inflow)</li>
+        <li>✅ Repayment of bonds/notes (outflow)</li>
+        <li>✅ Proceeds from stock issuance (inflow)</li>
+        <li>✅ Treasury stock purchases (outflow)</li>
+        <li>✅ Dividends PAID (outflow)</li>
+        <li>✅ Finance lease principal payments (outflow)</li>
+        <li>❌ Interest PAID → NOT here (Operating!)</li>
+        <li>❌ Dividends PAID → NOT Operating (Financing!)</li>
+        <li>⚠️ Bond issuance = actual cash proceeds received</li>
+        <li>⚠️ Finance lease: split interest (Op) vs. principal (Fin)</li>
+      </ul>
+    </div>
+    <div class="ref-card rc-nc">
+      <h3>🟠 Non-Cash Disclosures</h3>
+      <ul>
+        <li>✅ Acquiring equipment via note payable</li>
+        <li>✅ Acquiring ROU asset via finance lease</li>
+        <li>✅ Converting bonds to common stock</li>
+        <li>✅ Stock dividends declared</li>
+        <li>✅ Acquiring land by issuing stock</li>
+        <li>✅ Refinancing debt (non-cash portion)</li>
+        <li>❌ These do NOT appear on the statement itself</li>
+        <li>⚠️ Supplemental schedule disclosure only</li>
+        <li>⚠️ Significant investing + financing with no cash</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-hdr sh-ref">📊 Complex Transactions — Your Professor's Examples</div>
+  <div style="background:white;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,0.08);">
+    <div class="prof" style="margin-bottom:10px;">📊 <strong>Last Week of Class Inc. — $400M Bond at Discount:</strong> Bond issuance proceeds ($380M) = Financing inflow. Interest paid ($18M cash) = Operating outflow. Discount amortization ($1M) = ADD BACK in operating. Principal at maturity ($400M) = Financing outflow.</div>
+    <div class="prof" style="margin-bottom:10px;">📊 <strong>Making It to Finals Co. — Equity Method:</strong> Own 40% of Fire Z. Fire Z NI=$100K, Dividends=$30K. Investment Revenue=$40K. Dividends received=$12K. Undistributed earnings=$28K → SUBTRACT from NI (Asset Reverses — LABOR DAY).</div>
+    <div class="prof" style="margin-bottom:10px;">📊 <strong>Barely Making It Co. — FVTNI vs. AFS:</strong> FVTNI unrealized loss → ADD BACK in operating (it's in NI but non-cash). AFS unrealized loss → NO adjustment (it's in OCI, never touched NI).</div>
+    <div class="prof">📊 <strong>Summer Freedom Venture — $3M Finance Lease:</strong> 1st payment (day 1) = $195,774 all Financing. 2nd payment = $84,127 Operating (interest) + $111,647 Financing (principal). ROU asset acquisition = $3M non-cash disclosure.</div>
+  </div>
+
+  <div class="tip">💡 <strong>Indirect vs. Direct Method:</strong> Both produce the SAME net cash from operating activities. Indirect starts with Net Income and works backwards. Direct converts each income statement item from accrual to cash basis. Your professor teaches the indirect method — that's what's on the exam!</div>
+  <div class="warn" style="margin-top:8px;">⚠️ <strong>Top 5 Exam Traps:</strong> (1) Dividends PAID = Financing, NOT Operating. (2) Interest PAID = Operating, NOT Financing. (3) Trading securities = Operating, NOT Investing. (4) AFS unrealized G/L = NO cash flow adjustment. (5) Gain on sale → SUBTRACT from NI (full proceeds go to Investing).</div>
+</div>
+
+<script>
+// ── PANEL NAV ──
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── TRANSACTION DATA ──
+const transactions = [
+  { id:'ni', label:'Net Income', amt:180000, section:'operating', color:'t-ni', hint:'Starting point for indirect method', adj:'+' },
+  { id:'depr', label:'Depreciation Expense', amt:45000, section:'operating', color:'t-depr', hint:'Non-cash expense → Add back', adj:'+' },
+  { id:'gain', label:'Gain on Sale of Equipment', amt:-20000, section:'operating', color:'t-gain', hint:'Full proceeds go to Investing → Subtract', adj:'-' },
+  { id:'bond-disc', label:'Bond Discount Amortization', amt:5000, section:'operating', color:'t-bond', hint:'Non-cash component of interest → Add back', adj:'+' },
+  { id:'dtl', label:'DTL Increase', amt:9000, section:'operating', color:'t-dtl', hint:'Liability Duplicates → Add (LABOR DAY)', adj:'+' },
+  { id:'sbc', label:'Share-Based Comp Expense', amt:18000, section:'operating', color:'t-sbc', hint:'Non-cash expense → Add back', adj:'+' },
+  { id:'fvtni', label:'FVTNI Unrealized Loss', amt:6000, section:'operating', color:'t-fvtni', hint:'In NI but non-cash → Add back', adj:'+' },
+  { id:'equity-und', label:'Equity Method Undistributed Earnings', amt:-11000, section:'operating', color:'t-equity', hint:'Asset Reverses → Subtract (LABOR DAY)', adj:'-' },
+  { id:'ar', label:'Accounts Receivable ↑', amt:-12000, section:'operating', color:'t-ar', hint:'Asset Reverses → Subtract (LABOR DAY)', adj:'-' },
+  { id:'inventory', label:'Inventory ↓', amt:8000, section:'operating', color:'t-inv', hint:'Asset Reverses → Add (LABOR DAY)', adj:'+' },
+  { id:'ap', label:'Accounts Payable ↑', amt:15000, section:'operating', color:'t-ap', hint:'Liability Duplicates → Add (LABOR DAY)', adj:'+' },
+  { id:'lease-int', label:'Finance Lease Interest Payment', amt:-8000, section:'operating', color:'t-lease', hint:'Interest = Operating outflow', adj:'-' },
+  { id:'ppe-sale', label:'Proceeds from Sale of Equipment', amt:55000, section:'investing', color:'t-ppe', hint:'Long-term asset → Investing inflow', adj:'+' },
+  { id:'ppe-buy', label:'Purchase of New Equipment', amt:-120000, section:'investing', color:'t-ppe', hint:'Long-term asset → Investing outflow', adj:'-' },
+  { id:'afs-buy', label:'Purchase of AFS Investments', amt:-40000, section:'investing', color:'t-fvtni', hint:'Investment purchase → Investing outflow', adj:'-' },
+  { id:'bond-proc', label:'Proceeds from Bond Issuance', amt:200000, section:'financing', color:'t-debt', hint:'Long-term debt → Financing inflow', adj:'+' },
+  { id:'div-paid', label:'Dividends Paid', amt:-30000, section:'financing', color:'t-stock', hint:'Financing outflow — NOT Operating!', adj:'-' },
+  { id:'lease-prin', label:'Finance Lease Principal Payment', amt:-25000, section:'financing', color:'t-lease', hint:'Principal = Financing outflow', adj:'-' },
+  { id:'nc-note', label:'Equipment Acquired via Note Payable', amt:75000, section:'noncash', color:'t-noncash', hint:'No cash involved → Disclosure only!', adj:'NC' },
+];
+
+let selectedTxn = null;
+let addedTxns = { operating:[], investing:[], financing:[], noncash:[] };
+
+function initBuilder() {
+  const grid = document.getElementById('txn-pool-grid');
+  grid.innerHTML = '';
+  transactions.forEach(t => {
+    const div = document.createElement('div');
+    div.className = 'txn-item ' + t.color;
+    div.id = 'txn-' + t.id;
+    div.onclick = () => selectTxn(t);
+    const fmtAmt = t.adj === 'NC' ? '$' + t.amt.toLocaleString() + ' (Non-Cash)' :
+      (t.amt >= 0 ? '+$' + t.amt.toLocaleString() : '-$' + Math.abs(t.amt).toLocaleString());
+    div.innerHTML = `<div>${t.label}</div><div class="txn-amt">${fmtAmt}</div><div class="txn-hint">${t.hint}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+function selectTxn(t) {
+  selectedTxn = t;
+  document.getElementById('selected-banner').style.display = 'block';
+  document.getElementById('selected-name').textContent = t.label + ' (' + (t.amt >= 0 ? '+' : '') + '$' + t.amt.toLocaleString() + ')';
+  document.querySelectorAll('.txn-item').forEach(el => el.style.outline = 'none');
+  document.getElementById('txn-' + t.id).style.outline = '3px solid #37474F';
+}
+
+function addToSection(section) {
+  if (!selectedTxn) return;
+  if (addedTxns[section].find(t => t.id === selectedTxn.id)) {
+    alert('This transaction is already in that section!');
+    return;
+  }
+  // Remove from other sections
+  ['operating','investing','financing','noncash'].forEach(s => {
+    addedTxns[s] = addedTxns[s].filter(t => t.id !== selectedTxn.id);
+  });
+  addedTxns[section].push(selectedTxn);
+  document.getElementById('txn-' + selectedTxn.id).classList.add('selected');
+  selectedTxn = null;
+  document.getElementById('selected-banner').style.display = 'none';
+  document.querySelectorAll('.txn-item').forEach(el => el.style.outline = 'none');
+  renderStatement();
+}
+
+function renderStatement() {
+  ['operating','investing','financing','noncash'].forEach(sec => {
+    const bodyId = sec === 'operating' ? 'op-body' : sec === 'investing' ? 'inv-body' : sec === 'financing' ? 'fin-body' : 'nc-body';
+    const emptyId = sec === 'operating' ? 'op-empty' : sec === 'investing' ? 'inv-empty' : sec === 'financing' ? 'fin-empty' : 'nc-empty';
+    const totalId = sec === 'operating' ? 'op-total' : sec === 'investing' ? 'inv-total' : sec === 'financing' ? 'fin-total' : 'nc-total';
+    const body = document.getElementById(bodyId);
+    const empty = document.getElementById(emptyId);
+    const totalEl = document.getElementById(totalId);
+
+    // Clear existing lines (keep empty msg)
+    body.querySelectorAll('.stmt-line').forEach(el => el.remove());
+
+    let total = 0;
+    addedTxns[sec].forEach(t => {
+      total += t.amt;
+      const line = document.createElement('div');
+      line.className = 'stmt-line';
+      const isPos = t.amt >= 0;
+      const fmtAmt = (isPos ? '+$' : '-$') + Math.abs(t.amt).toLocaleString();
+      line.innerHTML = `<span class="sl-label">${t.label}</span><span class="sl-amt ${isPos ? 'sl-pos' : 'sl-neg'}">${fmtAmt}</span><button class="sl-remove" onclick="removeTxn('${t.id}','${sec}')">✕</button>`;
+      body.appendChild(line);
+    });
+
+    empty.style.display = addedTxns[sec].length === 0 ? 'block' : 'none';
+    const fmtTotal = (total >= 0 ? '$' : '-$') + Math.abs(total).toLocaleString();
+    totalEl.textContent = fmtTotal;
+    totalEl.style.color = total >= 0 ? '#1B5E20' : '#C62828';
+  });
+
+  // Grand total (operating + investing + financing only)
+  const opTotal = addedTxns.operating.reduce((s,t) => s+t.amt, 0);
+  const invTotal = addedTxns.investing.reduce((s,t) => s+t.amt, 0);
+  const finTotal = addedTxns.financing.reduce((s,t) => s+t.amt, 0);
+  const grand = opTotal + invTotal + finTotal;
+  const gtEl = document.getElementById('grand-total-amt');
+  gtEl.textContent = (grand >= 0 ? '$' : '-$') + Math.abs(grand).toLocaleString();
+  gtEl.style.color = grand >= 0 ? '#68d391' : '#ff8a80';
+  document.getElementById('gt-check').textContent = `Operating: $${opTotal.toLocaleString()} + Investing: $${invTotal.toLocaleString()} + Financing: $${finTotal.toLocaleString()}`;
+}
+
+function removeTxn(id, section) {
+  addedTxns[section] = addedTxns[section].filter(t => t.id !== id);
+  const el = document.getElementById('txn-' + id);
+  if (el) el.classList.remove('selected');
+  renderStatement();
+}
+
+function checkAnswers() {
+  let correct = 0, wrong = 0, msgs = [];
+  transactions.forEach(t => {
+    const correctSec = t.section;
+    let found = false;
+    ['operating','investing','financing','noncash'].forEach(sec => {
+      if (addedTxns[sec].find(x => x.id === t.id)) {
+        if (sec === correctSec) { correct++; found = true; }
+        else { wrong++; msgs.push(`❌ <strong>${t.label}</strong> → You put it in <em>${sec}</em>, but it belongs in <em>${correctSec}</em>. ${t.hint}`); }
+      }
+    });
+    if (!found) msgs.push(`⚠️ <strong>${t.label}</strong> → Not yet classified. It belongs in <em>${t.section}</em>.`);
+  });
+  const fb = document.getElementById('feedback-box');
+  fb.style.display = 'block';
+  fb.innerHTML = `<div style="font-weight:bold;font-size:14px;margin-bottom:10px;color:${correct===transactions.length?'#1B5E20':'#C62828'}">Score: ${correct} / ${transactions.length} correct</div>` + (msgs.length ? msgs.map(m => `<div style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.07);font-size:12px;line-height:1.6;">${m}</div>`).join('') : '<div style="color:#1B5E20;font-size:13px;">🎉 Perfect! All transactions correctly classified!</div>');
+}
+
+function showAnswers() {
+  transactions.forEach(t => {
+    ['operating','investing','financing','noncash'].forEach(sec => {
+      addedTxns[sec] = addedTxns[sec].filter(x => x.id !== t.id);
+    });
+    addedTxns[t.section].push(t);
+    const el = document.getElementById('txn-' + t.id);
+    if (el) el.classList.add('selected');
+  });
+  renderStatement();
+  document.getElementById('feedback-box').style.display = 'none';
+}
+
+function resetBuilder() {
+  addedTxns = { operating:[], investing:[], financing:[], noncash:[] };
+  selectedTxn = null;
+  document.getElementById('selected-banner').style.display = 'none';
+  document.querySelectorAll('.txn-item').forEach(el => { el.classList.remove('selected'); el.style.outline = 'none'; });
+  document.getElementById('feedback-box').style.display = 'none';
+  renderStatement();
+}
+
+// ── WORKOUT ──
+function checkWorkout() {
+  const inputs = document.querySelectorAll('.it-input');
+  let correct = 0, total = 0;
+  inputs.forEach(inp => {
+    const ans = parseInt(inp.dataset.answer);
+    const val = parseInt(inp.value.replace(/[,$]/g,'')) || 0;
+    total++;
+    if (val === ans) { inp.classList.add('correct'); inp.classList.remove('wrong'); correct++; }
+    else { inp.classList.add('wrong'); inp.classList.remove('correct'); }
+  });
+  const fb = document.getElementById('workout-feedback');
+  fb.style.display = 'block';
+  fb.className = correct === total ? 'tip' : 'warn';
+  fb.innerHTML = `<strong>${correct} / ${total} correct!</strong> ${correct === total ? '🎉 Perfect! You nailed the cash flow statement!' : 'Review the red fields — check your LABOR DAY rules and complex transaction classifications!'}`;
+}
+
+function showWorkout() {
+  const inputs = document.querySelectorAll('.it-input');
+  const fmtMap = {
+    180000:'180,000', 45000:'45,000', '-20000':'(20,000)', 5000:'5,000', 9000:'9,000',
+    18000:'18,000', 6000:'6,000', '-11000':'(11,000)', '-12000':'(12,000)', 8000:'8,000',
+    15000:'15,000', '-8000':'(8,000)', 235000:'235,000', 55000:'55,000', '-120000':'(120,000)',
+    '-40000':'(40,000)', '-105000':'(105,000)', 200000:'200,000', '-30000':'(30,000)',
+    '-25000':'(25,000)', 145000:'145,000', 75000:'75,000', '-105000':'(105,000)', 275000:'275,000'
+  };
+  inputs.forEach(inp => {
+    const ans = inp.dataset.answer;
+    inp.value = fmtMap[ans] || ans;
+    inp.classList.add('correct');
+    inp.classList.remove('wrong');
+  });
+  const fb = document.getElementById('workout-feedback');
+  fb.style.display = 'block';
+  fb.className = 'info';
+  fb.innerHTML = '👁️ Answers revealed! Net Cash from Operating = $235,000 | Investing = ($105,000) | Financing = $145,000 | <strong>Net Increase in Cash = $275,000</strong>';
+}
+
+function resetWorkout() {
+  document.querySelectorAll('.it-input').forEach(inp => {
+    inp.value = '';
+    inp.classList.remove('correct','wrong');
+  });
+  document.getElementById('workout-feedback').style.display = 'none';
+}
+
+// ── QUIZ ──
+const quizQuestions = [
+  {q:'Where does INTEREST PAID appear on the cash flow statement?',opts:['Investing Activities','Financing Activities','Operating Activities','Non-Cash Disclosure'],ans:2,exp:'Interest PAID = Operating Activities! Common exam trap. Even though it relates to debt (financing), interest expense is on the income statement → stays in Operating.'},
+  {q:'Where do DIVIDENDS PAID appear on the cash flow statement?',opts:['Operating Activities','Investing Activities','Financing Activities','Non-Cash Disclosure'],ans:2,exp:'Dividends PAID = Financing Activities! They relate to equity (long-term financing). Contrast: Dividends RECEIVED = Operating Activities.'},
+  {q:'Accounts Receivable INCREASED by $15,000. What is the cash flow adjustment?',opts:['Add $15,000 to Net Income','Subtract $15,000 from Net Income','No adjustment needed','Move to Investing Activities'],ans:1,exp:'LABOR DAY: Assets REVERSE. AR ↑ → SUBTRACT. We recognized more revenue than we collected in cash. The increase in AR means cash came in less than revenue.'},
+  {q:'Accounts Payable DECREASED by $8,000. What is the cash flow adjustment?',opts:['Add $8,000 to Net Income','Subtract $8,000 from Net Income','No adjustment needed','Move to Financing Activities'],ans:1,exp:'LABOR DAY: Liabilities DUPLICATE. AP ↓ → SUBTRACT. We paid more cash than we expensed. The decrease in AP means we paid off old payables with cash.'},
+  {q:'A company has AFS investments with an unrealized loss of $10,000. What is the cash flow adjustment?',opts:['Add $10,000 to Net Income in Operating','Subtract $10,000 from Net Income in Operating','No adjustment needed — AFS unrealized G/L is in OCI','Move to Investing Activities'],ans:2,exp:'AFS unrealized G/L goes to OCI — it NEVER touches Net Income! Since it\'s not in NI, there\'s nothing to adjust in the operating section. Contrast: FVTNI unrealized G/L IS in NI → must adjust.'},
+  {q:'A company has FVTNI investments with an unrealized gain of $7,000. What is the cash flow adjustment?',opts:['Add $7,000 to Net Income','Subtract $7,000 from Net Income','No adjustment needed','Move to Investing Activities'],ans:1,exp:'FVTNI unrealized gain IS in Net Income (non-cash). Must SUBTRACT it from NI in operating section. The actual cash from FVTNI investments only comes when sold (Investing).'},
+  {q:'Equipment is sold for $80,000. Original cost $150,000, accumulated depreciation $90,000. Gain = $20,000. How is this reported?',opts:['$80,000 in Operating; nothing else','$80,000 in Investing; subtract $20,000 gain in Operating','$60,000 in Investing; $20,000 in Operating','$80,000 in Financing'],ans:1,exp:'Full proceeds ($80,000) → Investing inflow. Gain ($20,000) → SUBTRACT from NI in Operating (it\'s already included in NI but the cash goes to Investing). Never split the proceeds!'},
+  {q:'A company acquires equipment worth $100,000 by signing a note payable. Where does this appear?',opts:['Investing outflow $100,000','Financing inflow $100,000','Both Investing and Financing at $100,000 each','Non-Cash Disclosure only'],ans:3,exp:'No cash changed hands! This is a significant investing + financing activity with NO cash → Non-Cash Disclosure only. It does NOT appear on the statement itself.'},
+  {q:'Bond discount amortization of $3,000 was recorded. What is the cash flow adjustment?',opts:['Subtract $3,000 from Net Income','Add $3,000 to Net Income','Move $3,000 to Financing Activities','No adjustment needed'],ans:1,exp:'Bond discount amortization is a non-cash component of interest expense. It increased Interest Expense (reduced NI) but involved no cash → ADD BACK in Operating. The actual cash paid = stated rate × face value.'},
+  {q:'Share-based compensation expense of $25,000 was recorded. What is the cash flow adjustment?',opts:['Subtract $25,000 from Net Income','Add $25,000 to Net Income','Move $25,000 to Financing Activities','No adjustment needed'],ans:1,exp:'Share-based comp is a non-cash expense — the credit goes to APIC, not cash. It reduced NI but involved no cash outflow → ADD BACK in Operating. Just like depreciation!'},
+  {q:'Under the equity method, you own 30% of an investee. Investee NI = $100,000, dividends paid = $20,000. What is your cash flow adjustment?',opts:['Add $30,000 to Net Income','Subtract $30,000 from Net Income','Subtract $24,000 from Net Income','Add $6,000 to Net Income'],ans:2,exp:'Investment Revenue = 30% × $100K = $30K. Dividends received = 30% × $20K = $6K. Undistributed earnings = $30K − $6K = $24K → SUBTRACT from NI (Asset Reverses — LABOR DAY). The $6K cash received is already in NI as revenue.'},
+  {q:'A finance lease payment of $50,000 consists of $15,000 interest and $35,000 principal. How is this classified?',opts:['$50,000 all in Financing','$50,000 all in Operating','$15,000 Operating + $35,000 Financing','$35,000 Operating + $15,000 Financing'],ans:2,exp:'Finance lease payments SPLIT: Interest ($15,000) → Operating outflow (interest expense on IS). Principal ($35,000) → Financing outflow (reduces lease liability). Always split finance lease payments!'},
+  {q:'Trading securities had an unrealized gain of $5,000. Where does this appear on the cash flow statement?',opts:['Investing Activities — inflow','Subtract from Net Income in Operating','Add to Net Income in Operating','Non-Cash Disclosure'],ans:1,exp:'Trading securities unrealized G/L IS in Net Income (non-cash). Must SUBTRACT the gain from NI in Operating. Also note: trading securities purchases/sales go to Operating (not Investing)!'},
+  {q:'DTL (Deferred Tax Liability) INCREASED by $12,000. What is the cash flow adjustment?',opts:['Subtract $12,000 from Net Income','Add $12,000 to Net Income','Move to Financing Activities','No adjustment needed'],ans:1,exp:'LABOR DAY: Liabilities DUPLICATE. DTL ↑ → ADD $12,000 to Net Income. We recognized more tax expense than we paid in cash. The DTL increase means we deferred some tax payments to the future.'},
+];
+
+let quizAnswers = {};
+let quizSubmitted = false;
+
+function renderQuiz() {
+  const container = document.getElementById('quiz-container');
+  container.innerHTML = '';
+  quizAnswers = {};
+  quizSubmitted = false;
+  document.getElementById('quiz-score').textContent = '0 / 0';
+  document.getElementById('quiz-progress').textContent = 'Answer questions to track your score';
+  document.getElementById('result-box').classList.remove('show');
+
+  quizQuestions.forEach((q, i) => {
+    const div = document.createElement('div');
+    div.className = 'quiz-item';
+    div.id = 'qitem-' + i;
+    div.innerHTML = `
+      <div class="quiz-q">Q${i+1}: ${q.q}</div>
+      <div class="quiz-opts" id="qopts-${i}">
+        ${q.opts.map((o,j) => `<button class="quiz-opt" onclick="selectQuizOpt(${i},${j})" id="qopt-${i}-${j}">${String.fromCharCode(65+j)}. ${o}</button>`).join('')}
+      </div>
+      <div class="quiz-exp" id="qexp-${i}"></div>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function selectQuizOpt(qi, oi) {
+  if (quizSubmitted) return;
+  quizAnswers[qi] = oi;
+  for (let j = 0; j < quizQuestions[qi].opts.length; j++) {
+    document.getElementById('qopt-' + qi + '-' + j).classList.remove('sel-correct','sel-wrong');
+  }
+  document.getElementById('qopt-' + qi + '-' + oi).classList.add(oi === quizQuestions[qi].ans ? 'sel-correct' : 'sel-wrong');
+  const answered = Object.keys(quizAnswers).length;
+  document.getElementById('quiz-progress').textContent = `${answered} of ${quizQuestions.length} answered`;
+}
+
+function submitQuiz() {
+  quizSubmitted = true;
+  let correct = 0;
+  quizQuestions.forEach((q, i) => {
+    const opts = document.querySelectorAll(`#qopts-${i} .quiz-opt`);
+    opts.forEach(o => o.classList.add('disabled'));
+    document.getElementById('qopt-' + i + '-' + q.ans).classList.add('reveal');
+    const exp = document.getElementById('qexp-' + i);
+    const userAns = quizAnswers[i];
+    if (userAns === q.ans) {
+      correct++;
+      exp.className = 'quiz-exp show exp-ok';
+      exp.innerHTML = '✅ Correct! ' + q.exp;
+      document.getElementById('qitem-' + i).classList.add('correct');
+    } else {
+      exp.className = 'quiz-exp show exp-no';
+      exp.innerHTML = '❌ ' + (userAns !== undefined ? 'Incorrect. ' : 'Not answered. ') + q.exp;
+      document.getElementById('qitem-' + i).classList.add('wrong');
+    }
+  });
+  const total = quizQuestions.length;
+  const pct = Math.round(correct / total * 100);
+  document.getElementById('quiz-score').textContent = `${correct} / ${total}`;
+  const rb = document.getElementById('result-box');
+  rb.classList.add('show');
+  document.getElementById('result-score').textContent = `${correct} / ${total} (${pct}%)`;
+  const msgs = ['Keep reviewing LABOR DAY and the classification rules! 💪','Getting there! Review the complex transactions section! 📚','Good work! A bit more practice and you\'ll nail it! 🎯','Great job! Almost exam-ready! 🌟','Outstanding! You\'ve mastered cash flow classification! 🏆🎓'];
+  document.getElementById('result-msg').textContent = msgs[Math.min(Math.floor(pct/20), 4)];
+  rb.scrollIntoView({behavior:'smooth'});
+}
+
+function resetQuiz() { renderQuiz(); }
+
+// Init
+initBuilder();
+renderStatement();
+renderQuiz();
+</script>
+</body>
+</html>
